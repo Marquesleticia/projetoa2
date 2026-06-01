@@ -14,21 +14,22 @@ Texto → TF-IDF (500 features) → StandardScaler → PCA (50 componentes) → 
 | Cluster 2 📢 | SPAM PROMOCIONAL | `#FFE66D` | Marketing, assinaturas, ringtones, concursos via SMS |
 | Cluster 3 🔔 | NOTIFICAÇÃO / ALERTA | `#A78BFA` | SMS automáticos: banco, lembretes, confirmações de serviço |
 
-## Estrutura
+# Estrutura do Projeto
 
+```text
 PROJETOA2/
 ├── app.py                  # Backend Flask + API REST
-├── Dockerfile              # Container de produção (Gunicorn)
-├── docker-compose.yml      # Orquestração
+├── Dockerfile              # Container Docker
+├── docker-compose.yml      # Orquestração dos serviços
 ├── requirements.txt        # Dependências Python
 ├── templates/
 │   └── index.html          # Frontend
 └── models/
-├── tfidf_vectorizer.pkl
-├── scaler.pkl
-├── pca_model.pkl
-└── hclust_knn_model.pkl
-
+    ├── tfidf_vectorizer.pkl
+    ├── scaler.pkl
+    ├── pca_model.pkl
+    └── hclust_knn_model.pkl
+```
 ## Como executar
 
 ### Com Docker (recomendado)
@@ -73,19 +74,6 @@ python app.py
     "description": "SMS com linguagem de alta pressão: prêmios, dinheiro imediato, números para ligar."
   }
 }
-```
-
-**Erros possíveis:**
-```json
-{ "error": "Texto não pode ser vazio." }         // 400
-{ "error": "Texto muito curto. Insira ao menos 5 caracteres." }  // 400
-{ "error": "Erro na inferência: ..." }           // 500
-```
-
-### `GET /api/health`
-
-```json
-{ "status": "ok", "models_loaded": true }
 ```
 
 ## Dataset
