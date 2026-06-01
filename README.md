@@ -1,42 +1,44 @@
-# ClusterLens 
+# SpamScan
 
-Aplicação web para classificação de texto via modelo hierárquico de clustering.
+Aplicação web para classificação de SMS em clusters via modelo hierárquico de clustering.
 
-## Pipeline de Inferência
-
-```
+## Pipeline de Inferência 
 Texto → TF-IDF (500 features) → StandardScaler → PCA (50 componentes) → KNN → Cluster (0–3)
-```
+
+## Clusters
+
+| Cluster | Tag | Cor | Descrição |
+|---|---|---|---|
+| Cluster 0 ⚠ | SPAM AGRESSIVO | `#FF6B6B` | Alta pressão: prêmios, dinheiro imediato, chamadas urgentes |
+| Cluster 1 ✉ | MENSAGEM LEGÍTIMA | `#4ECDC4` | SMS cotidiano e conversacional entre pessoas reais |
+| Cluster 2 📢 | SPAM PROMOCIONAL | `#FFE66D` | Marketing, assinaturas, ringtones, concursos via SMS |
+| Cluster 3 🔔 | NOTIFICAÇÃO / ALERTA | `#A78BFA` | SMS automáticos: banco, lembretes, confirmações de serviço |
 
 ## Estrutura
 
-```
-app/
+PROJETOA2/
 ├── app.py                  # Backend Flask + API REST
-├── Dockerfile              # Container de produção
+├── Dockerfile              # Container de produção (Gunicorn)
 ├── docker-compose.yml      # Orquestração
 ├── requirements.txt        # Dependências Python
 ├── templates/
 │   └── index.html          # Frontend
 └── models/
-    ├── tfidf_vectorizer.pkl
-    ├── scaler.pkl
-    ├── pca_model.pkl
-    └── hclust_knn_model.pkl
-```
+├── tfidf_vectorizer.pkl
+├── scaler.pkl
+├── pca_model.pkl
+└── hclust_knn_model.pkl
 
 ## Como executar
 
 ### Com Docker (recomendado)
 
 ```bash
-# Build e execução
 docker compose up --build
-
 # Acesse: http://localhost:5000
 ```
 
-### Sem Docker (dev)
+### Sem Docker (desenvolvimento)
 
 ```bash
 pip install -r requirements.txt
@@ -50,28 +52,42 @@ python app.py
 
 **Body:**
 ```json
-{ "text": "seu texto aqui" }
+{ "text": "WINNER! You have won a £1000 cash prize. Call NOW!" }
 ```
 
 **Response:**
 ```json
 {
-  "cluster": "Cluster 1",
+  "cluster": "Cluster 0",
   "confidence": {
-    "Cluster 0": 0.0,
-    "Cluster 1": 100.0,
-    "Cluster 2": 0.0,
+    "Cluster 0": 95.0,
+    "Cluster 1": 2.0,
+    "Cluster 2": 3.0,
     "Cluster 3": 0.0
   },
   "info": {
-    "label": "Cluster 1",
-    "icon": "▲",
-    "color": "#4ECDC4",
-    "description": "..."
+    "label": "Cluster 0",
+    "icon": "⚠",
+    "color": "#FF6B6B",
+    "tag": "SPAM AGRESSIVO",
+    "description": "SMS com linguagem de alta pressão: prêmios, dinheiro imediato, números para ligar."
   }
 }
 ```
 
+**Erros possíveis:**
+```json
+{ "error": "Texto não pode ser vazio." }         // 400
+{ "error": "Texto muito curto. Insira ao menos 5 caracteres." }  // 400
+{ "error": "Erro na inferência: ..." }           // 500
+```
+
 ### `GET /api/health`
 
-Retorna `{ "status": "ok", "models_loaded": true }`.
+```json
+{ "status": "ok", "models_loaded": true }
+```
+
+## Dataset
+
+[SMS Spam Collection](https://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection) — 4.457 mensagens rotuladas como spam ou ham.
