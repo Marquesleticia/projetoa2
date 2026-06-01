@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SpamScan — Detector de SMS Spam</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0a0a0f;
+    --surface:  #12121a;
+    --border:   #1e1e2e;
+    --text:     #e8e8f0;
+    --muted:    #5a5a7a;
+    --accent:   #ef4444;
+    --accent2:  #f97316;
+    --c0: #FF6B6B;
+    --c1: #4ECDC4;
+    --c2: #FFE66D;
+    --c3: #A78BFA;
+    --radius: 4px;
+    --font-mono: 'Space Mono', monospace;
+    --font-sans: 'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(239,68,68,.10) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 30% at 10% 80%, rgba(249,115,22,.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  .wrapper {
+    position: relative; z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+
+  /* HEADER */
+  header { display: flex; flex-direction: column; gap: 10px; }
+
+  .badge {
+    font-family: var(--font-mono);
+    font-size: .65rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .badge::before {
+    content: '';
+    display: inline-block;
+    width: 20px; height: 1px;
+    background: var(--accent2);
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -.03em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: .76rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* COMO FUNCIONA */
+  .how {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .how-item {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .how-num {
+    font-family: var(--font-mono);
+    font-size: .65rem;
+    color: var(--accent2);
+    letter-spacing: .1em;
+  }
+  .how-title {
+    font-size: .88rem;
+    font-weight: 600;
+  }
+  .how-desc {
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* PIPELINE */
+  .pipeline {
+    display: flex; gap: 0;
+    font-family: var(--font-mono);
+    font-size: .65rem;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .pipe-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .pipe-step:not(:last-child) { border-right: none; }
+  .pipe-step:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+  .pipe-step:last-child  { border-radius: 0 var(--radius) var(--radius) 0; }
+  .pipe-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
+  }
+
+  /* INPUT CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    display: flex; flex-direction: column; gap: 18px;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .card-label {
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* SMS MOCKUP */
+  .sms-frame {
+    background: #0d0d14;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .sms-topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding-bottom: 10px;
+    border-bottom: 0.5px solid var(--border);
+    font-size: .78rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  .sms-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .sms-dot.green { background: #22c55e; }
+
+  textarea {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: .9rem;
+    line-height: 1.7;
+    padding: 4px 0;
+    width: 100%;
+    min-height: 100px;
+    resize: vertical;
+    outline: none;
+  }
+  textarea::placeholder { color: var(--muted); }
+
+  .sms-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 8px;
+    border-top: 0.5px solid var(--border);
+  }
+  .char-count {
+    font-family: var(--font-mono);
+    font-size: .65rem;
+    color: var(--muted);
+  }
+
+  /* BUTTON */
+  button.predict-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-sans);
+    font-size: .92rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: 13px 28px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    transition: background .2s, transform .1s;
+  }
+  button.predict-btn:hover { background: #dc2626; }
+  button.predict-btn:active { transform: scale(.97); }
+  button.predict-btn.loading { pointer-events: none; opacity: .7; }
+
+  .spinner {
+    display: none;
+    width: 15px; height: 15px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  .loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box {
+    background: rgba(239,68,68,.08);
+    border: 1px solid rgba(239,68,68,.3);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-family: var(--font-mono);
+    font-size: .75rem;
+    color: #f87171;
+    display: none;
+  }
+
+  /* RESULTADO */
+  .result-area {
+    display: none; flex-direction: column; gap: 20px;
+    animation: fadeUp .4s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(14px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .result-header {
+    font-family: var(--font-mono);
+    font-size: .65rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .result-header::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .cluster-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    display: flex; align-items: flex-start; gap: 20px;
+    position: relative; overflow: hidden;
+  }
+  .cluster-accent-bar {
+    position: absolute; left:0; top:0; bottom:0; width:4px;
+  }
+
+  .cluster-icon-wrap {
+    width: 52px; height: 52px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; flex-shrink: 0;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+  }
+
+  .cluster-tag {
+    font-family: var(--font-mono);
+    font-size: .62rem; letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 3px 8px; border-radius: 2px;
+    display: inline-block; margin-bottom: 6px;
+  }
+
+  .cluster-name {
+    font-size: 1.5rem; font-weight: 800;
+    letter-spacing: -.02em; margin-bottom: 4px;
+  }
+
+  .cluster-desc {
+    font-family: var(--font-mono);
+    font-size: .72rem; color: var(--muted);
+    line-height: 1.6; max-width: 520px;
+  }
+
+  /* BARRAS DE CONFIANÇA */
+  .confidence-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  @media (max-width: 520px) { .confidence-grid { grid-template-columns: 1fr; } }
+
+  .conf-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .conf-top {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .conf-label {
+    font-family: var(--font-mono);
+    font-size: .68rem; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .conf-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .conf-pct { font-family: var(--font-mono); font-size: .78rem; font-weight: 700; }
+  .conf-bar-bg { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .conf-bar-fill { height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+
+  /* EXEMPLOS */
+  .examples {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .ex-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+    text-align: left;
+  }
+  .ex-btn:hover { border-color: var(--accent); color: var(--text); }
+  .ex-btn.spam { border-color: rgba(239,68,68,.3); color: #fca5a5; }
+  .ex-btn.spam:hover { border-color: var(--accent); }
+  .ex-btn.ham  { border-color: rgba(78,205,196,.3); color: #99f6e4; }
+  .ex-btn.ham:hover { border-color: #4ECDC4; }
+
+  footer {
+    position: relative; z-index: 1;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: .62rem; color: var(--muted);
+    letter-spacing: .08em; padding-bottom: 24px;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="badge">SMS Spam Detection · Dataset SMS Spam Collection</div>
+    <h1>Spam<span>Scan</span></h1>
+    <p class="subtitle">
+      Cole ou digite um SMS abaixo.<br>
+      O modelo identifica em qual grupo (cluster) aquela mensagem se encaixa — spam agressivo, spam promocional, notificação automática ou mensagem legítima.
+    </p>
+  </header>
+
+  <!-- COMO FUNCIONA -->
+  <div class="how">
+    <div class="how-item">
+      <span class="how-num">01 —</span>
+      <span class="how-title">Você digita um SMS</span>
+      <span class="how-desc">Pode ser qualquer mensagem: promocional, pessoal, alerta de banco, oferta suspeita...</span>
+    </div>
+    <div class="how-item">
+      <span class="how-num">02 —</span>
+      <span class="how-title">O modelo analisa</span>
+      <span class="how-desc">TF-IDF extrai o vocabulário → PCA reduz dimensões → KNN compara com os 4.457 SMS do treino</span>
+    </div>
+    <div class="how-item">
+      <span class="how-num">03 —</span>
+      <span class="how-title">Recebe o cluster</span>
+      <span class="how-desc">Resultado: em qual dos 4 grupos de padrão de linguagem aquele SMS se encaixa</span>
+    </div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="pipeline">
+    <div class="pipe-step"><span class="pipe-dot"></span>TF-IDF · 500 features</div>
+    <div class="pipe-step"><span class="pipe-dot"></span>Standard Scaler</div>
+    <div class="pipe-step"><span class="pipe-dot"></span>PCA · 50 componentes</div>
+    <div class="pipe-step"><span class="pipe-dot"></span>KNN Hierárquico</div>
+    <div class="pipe-step"><span class="pipe-dot"></span>4 Clusters</div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="card">
+    <span class="card-label">// Mensagem SMS para analisar</span>
+
+    <div class="sms-frame">
+      <div class="sms-topbar">
+        <div class="sms-dot green"></div>
+        <span>Nova mensagem recebida</span>
+      </div>
+      <textarea id="textInput" placeholder="Cole aqui o SMS que deseja analisar...
+
+Exemplos:
+• WINNER! You have won a £1000 cash prize. Call 08000930705 NOW!
+• Hey, are you coming tonight? Let me know
+• Your account balance is low. Reply STOP to unsubscribe"></textarea>
+      <div class="sms-footer">
+        <span class="char-count"><span id="charCount">0</span> caracteres</span>
+      </div>
+    </div>
+
+    <!-- Exemplos rápidos -->
+    <div>
+      <span class="card-label" style="display:block;margin-bottom:8px;">// exemplos rápidos</span>
+      <div class="examples">
+        <button class="ex-btn spam" onclick="fillExample('WINNER! You have won a £1000 cash prize. Call 08000930705 NOW to claim your free reward!')">⚠ Spam: prêmio urgente</button>
+        <button class="ex-btn spam" onclick="fillExample('Congrats! ur mobile no. was selected. Reply YES to win £500 cash or call 09066362231')">⚠ Spam: selecionado</button>
+        <button class="ex-btn spam" onclick="fillExample('URGENT! Your number has been awarded 2 bonus prizes. Txt CLAIM to 80182 now. 150p/msg')">📢 Spam: txt para ganhar</button>
+        <button class="ex-btn ham"  onclick="fillExample('Hey, are you coming to the party tonight? Let me know!')">✉ Ham: convite pessoal</button>
+        <button class="ex-btn ham"  onclick="fillExample('Ok I will be there in 10 minutes, just leaving home now')">✉ Ham: resposta casual</button>
+        <button class="ex-btn ham"  onclick="fillExample('Happy birthday! Hope you have an amazing day today')">✉ Ham: aniversário</button>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <button class="predict-btn" id="predictBtn" onclick="runPredict()">
+      <span class="spinner"></span>
+      Analisar mensagem
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+  <!-- RESULTADO -->
+  <div class="result-area" id="resultArea">
+    <div class="result-header">// resultado da análise</div>
+
+    <div class="cluster-card" id="clusterCard">
+      <div class="cluster-accent-bar" id="accentBar"></div>
+      <div class="cluster-icon-wrap" id="clusterIconWrap">
+        <span id="clusterIcon">✉</span>
+      </div>
+      <div>
+        <span class="cluster-tag" id="clusterTag">—</span>
+        <div class="cluster-name" id="clusterName">—</div>
+        <div class="cluster-desc" id="clusterDesc">—</div>
+      </div>
+    </div>
+
+    <div class="result-header" style="margin-top:4px;">// similaridade com cada cluster</div>
+    <div class="confidence-grid" id="confidenceGrid"></div>
+  </div>
+
+</div>
+
+<footer>
+  SpamScan · SMS Spam Collection Dataset · TF-IDF + PCA + Hierarchical Clustering + KNN
+</footer>
+
+<script>
+const CLUSTER_COLORS = {
+  "Cluster 0": "#FF6B6B",
+  "Cluster 1": "#4ECDC4",
+  "Cluster 2": "#FFE66D",
+  "Cluster 3": "#A78BFA",
+};
+
+const textarea    = document.getElementById("textInput");
+const charCountEl = document.getElementById("charCount");
+
+textarea.addEventListener("input", () => {
+  charCountEl.textContent = textarea.value.length;
+});
+textarea.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") runPredict();
+});
+
+function fillExample(text) {
+  textarea.value = text;
+  charCountEl.textContent = text.length;
+  textarea.focus();
+}
+
+async function runPredict() {
+  const text = textarea.value.trim();
+  const btn  = document.getElementById("predictBtn");
+  const err  = document.getElementById("errorBox");
+
+  err.style.display = "none";
+
+  if (!text || text.length < 5) {
+    err.textContent = "⚠ Insira ao menos 5 caracteres para analisar.";
+    err.style.display = "block";
+    return;
+  }
+
+  btn.classList.add("loading");
+  btn.querySelector("svg").style.display = "none";
+
+  try {
+    const res  = await fetch("/api/predict", {
+      method:  "POST",
+      headers: {"Content-Type": "application/json"},
+      body:    JSON.stringify({ text }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      err.textContent = "⚠ " + (data.error || "Erro desconhecido.");
+      err.style.display = "block";
+      return;
+    }
+    renderResult(data);
+  } catch (e) {
+    err.textContent = "⚠ Falha de comunicação com o servidor.";
+    err.style.display = "block";
+  } finally {
+    btn.classList.remove("loading");
+    btn.querySelector("svg").style.display = "block";
+  }
+}
+
+function renderResult(data) {
+  const { cluster, confidence, info } = data;
+  const color = CLUSTER_COLORS[cluster] || "#7c3aed";
+
+  document.getElementById("accentBar").style.background        = color;
+  document.getElementById("clusterCard").style.borderColor     = color + "55";
+  document.getElementById("clusterIconWrap").style.borderColor = color + "66";
+  document.getElementById("clusterIcon").textContent           = info.icon || "✉";
+  document.getElementById("clusterName").textContent           = cluster;
+  document.getElementById("clusterName").style.color           = color;
+
+  const tagEl = document.getElementById("clusterTag");
+  tagEl.textContent           = info.tag || cluster;
+  tagEl.style.background      = color + "22";
+  tagEl.style.color           = color;
+  tagEl.style.border          = `1px solid ${color}44`;
+
+  document.getElementById("clusterDesc").textContent = info.description || "";
+
+  // barras de confiança
+  const grid = document.getElementById("confidenceGrid");
+  grid.innerHTML = "";
+  for (const [cls, pct] of Object.entries(confidence)) {
+    const c = CLUSTER_COLORS[cls] || "#7c3aed";
+    const div = document.createElement("div");
+    div.className = "conf-item";
+    div.innerHTML = `
+      <div class="conf-top">
+        <span class="conf-label">
+          <span class="conf-dot" style="background:${c}"></span>
+          ${cls}
+        </span>
+        <span class="conf-pct" style="color:${c}">${pct}%</span>
+      </div>
+      <div class="conf-bar-bg">
+        <div class="conf-bar-fill" style="width:0%;background:${c}" data-width="${pct}"></div>
+      </div>`;
+    grid.appendChild(div);
+  }
+
+  const area = document.getElementById("resultArea");
+  area.style.display = "flex";
+  area.style.animation = "none";
+  void area.offsetWidth;
+  area.style.animation = "";
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    grid.querySelectorAll(".conf-bar-fill").forEach(el => {
+      el.style.width = el.dataset.width + "%";
+    });
+  }));
+
+  area.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+</script>
+</body>
+</html>
