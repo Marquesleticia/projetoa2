@@ -317,6 +317,134 @@
     line-height: 1.6; max-width: 520px;
   }
 
+
+  .verdict-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .verdict-badge {
+    font-family: var(--font-sans);
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    line-height: 1;
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    border: 1px solid currentColor;
+    background: rgba(255,255,255,.04);
+  }
+
+  .distance-pill {
+    font-family: var(--font-mono);
+    font-size: .66rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,.03);
+  }
+
+  .cluster-secondary {
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .explain-block {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .token-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .token-chip {
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    color: var(--text);
+    background: rgba(255,255,255,.05);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 10px;
+  }
+
+  .token-weight {
+    color: var(--muted);
+    margin-left: 4px;
+  }
+
+
+  .cluster-guide {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .cluster-guide-title {
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .cluster-guide-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: rgba(255,255,255,.025);
+    padding: 10px 12px;
+    display: grid;
+    gap: 4px;
+  }
+
+  .cluster-guide-item.active {
+    background: rgba(255,255,255,.05);
+  }
+
+  .cluster-guide-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .cluster-guide-name {
+    font-family: var(--font-sans);
+    font-size: .9rem;
+    font-weight: 800;
+  }
+
+  .cluster-guide-tag {
+    font-family: var(--font-mono);
+    font-size: .58rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+  }
+
+  .cluster-guide-desc {
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
   /* BARRAS DE CONFIANÇA */
   .confidence-grid {
     display: grid;
@@ -385,7 +513,7 @@
     <h1>Spam<span>Scan</span></h1>
     <p class="subtitle">
       Cole ou digite um SMS abaixo.<br>
-      O modelo identifica em qual grupo (cluster) aquela mensagem se encaixa — spam agressivo, spam promocional, notificação automática ou mensagem legítima.
+      O modelo retorna primeiro uma indicação geral de HAM ou SPAM e, em seguida, mostra o cluster textual mais próximo, as palavras mais relevantes e a confiança da decisão.
     </p>
   </header>
 
@@ -403,8 +531,8 @@
     </div>
     <div class="how-item">
       <span class="how-num">03 —</span>
-      <span class="how-title">Recebe o cluster</span>
-      <span class="how-desc">Resultado: em qual dos 4 grupos de padrão de linguagem aquele SMS se encaixa</span>
+      <span class="how-title">Recebe a análise</span>
+      <span class="how-desc">Resultado principal: HAM ou SPAM. Como apoio, a tela mostra cluster, confiança, distância e palavras ativadoras.</span>
     </div>
   </div>
 
@@ -413,7 +541,7 @@
     <div class="pipe-step"><span class="pipe-dot"></span>TF-IDF · 500 features</div>
     <div class="pipe-step"><span class="pipe-dot"></span>Standard Scaler</div>
     <div class="pipe-step"><span class="pipe-dot"></span>PCA · 50 componentes</div>
-    <div class="pipe-step"><span class="pipe-dot"></span>KNN Hierárquico</div>
+    <div class="pipe-step"><span class="pipe-dot"></span>KNN · k=11 · distância</div>
     <div class="pipe-step"><span class="pipe-dot"></span>4 Clusters</div>
   </div>
 
@@ -470,8 +598,23 @@ Exemplos:
       </div>
       <div>
         <span class="cluster-tag" id="clusterTag">—</span>
-        <div class="cluster-name" id="clusterName">—</div>
+
+        <div class="verdict-row">
+          <span class="verdict-badge" id="verdictBadge">—</span>
+          <span class="distance-pill" id="distanceText">distância: —</span>
+        </div>
+
+        <div class="cluster-secondary" id="clusterSecondary">Cluster previsto: —</div>
         <div class="cluster-desc" id="clusterDesc">—</div>
+
+        <div class="explain-block">
+          <span class="card-label">// palavras ativadoras</span>
+          <div class="token-list" id="tokenList"></div>
+        </div>
+
+        <div class="cluster-guide" id="clusterGuide">
+          <div class="cluster-guide-title">// o que cada cluster significa</div>
+        </div>
       </div>
     </div>
 
@@ -491,6 +634,25 @@ const CLUSTER_COLORS = {
   "Cluster 1": "#4ECDC4",
   "Cluster 2": "#FFE66D",
   "Cluster 3": "#A78BFA",
+};
+
+const CLUSTER_DETAILS = {
+  "Cluster 0": {
+    tag: "SPAM AGRESSIVO",
+    description: "Mensagens com tom de urgência, promessa de prêmio, dinheiro rápido ou chamada imediata para ação. Costuma ter termos como winner, cash, urgent, claim e números para ligar."
+  },
+  "Cluster 1": {
+    tag: "MENSAGEM LEGÍTIMA",
+    description: "Mensagens comuns e conversacionais, parecidas com comunicação pessoal. Normalmente são curtas, informais e com vocabulário cotidiano, como ok, later, home e call you."
+  },
+  "Cluster 2": {
+    tag: "SPAM PROMOCIONAL",
+    description: "Mensagens com perfil de marketing, promoções, concursos, assinaturas ou instruções para responder por SMS. Pode conter termos como reply, stop, txt, offer e per week."
+  },
+  "Cluster 3": {
+    tag: "NOTIFICAÇÃO / ALERTA",
+    description: "Mensagens com aparência automática, como alertas, confirmações, avisos de serviço ou notificações. O tom tende a ser mais formal e impessoal."
+  }
 };
 
 const textarea    = document.getElementById("textInput");
@@ -549,25 +711,82 @@ async function runPredict() {
 }
 
 function renderResult(data) {
-  const { cluster, confidence, info } = data;
-  const color = CLUSTER_COLORS[cluster] || "#7c3aed";
+  const { label, label_info, cluster, confidence, info, top_tokens, distance } = data;
+  const clusterColor = CLUSTER_COLORS[cluster] || "#7c3aed";
+  const labelColor = label === "SPAM" ? "#FF6B6B" : "#4ECDC4";
 
-  document.getElementById("accentBar").style.background        = color;
-  document.getElementById("clusterCard").style.borderColor     = color + "55";
-  document.getElementById("clusterIconWrap").style.borderColor = color + "66";
+  document.getElementById("accentBar").style.background        = labelColor;
+  document.getElementById("clusterCard").style.borderColor     = labelColor + "55";
+  document.getElementById("clusterIconWrap").style.borderColor = clusterColor + "66";
   document.getElementById("clusterIcon").textContent           = info.icon || "✉";
-  document.getElementById("clusterName").textContent           = cluster;
-  document.getElementById("clusterName").style.color           = color;
 
   const tagEl = document.getElementById("clusterTag");
   tagEl.textContent           = info.tag || cluster;
-  tagEl.style.background      = color + "22";
-  tagEl.style.color           = color;
-  tagEl.style.border          = `1px solid ${color}44`;
+  tagEl.style.background      = clusterColor + "22";
+  tagEl.style.color           = clusterColor;
+  tagEl.style.border          = `1px solid ${clusterColor}44`;
 
-  document.getElementById("clusterDesc").textContent = info.description || "";
+  const verdictBadge = document.getElementById("verdictBadge");
+  verdictBadge.textContent = label || "—";
+  verdictBadge.style.color = labelColor;
+  verdictBadge.style.boxShadow = `0 0 22px ${labelColor}22`;
 
-  // barras de confiança
+  const distanceText = document.getElementById("distanceText");
+  const distValue = typeof distance === "number" ? distance.toFixed(4) : "—";
+  distanceText.textContent = `distância do vizinho mais próximo: ${distValue}`;
+
+  document.getElementById("clusterSecondary").textContent = `Cluster previsto: ${cluster}`;
+  document.getElementById("clusterDesc").textContent = label_info?.description || info.description || "";
+
+
+  // Explicação de todos os clusters, destacando o cluster previsto
+  const guide = document.getElementById("clusterGuide");
+  guide.innerHTML = '<div class="cluster-guide-title">// o que cada cluster significa</div>';
+
+  for (const [cls, detail] of Object.entries(CLUSTER_DETAILS)) {
+    const c = CLUSTER_COLORS[cls] || "#7c3aed";
+    const item = document.createElement("div");
+    item.className = "cluster-guide-item" + (cls === cluster ? " active" : "");
+    item.style.borderColor = cls === cluster ? c + "88" : "var(--border)";
+
+    item.innerHTML = `
+      <div class="cluster-guide-head">
+        <span class="cluster-guide-name" style="color:${c}">${cls}${cls === cluster ? " · previsto" : ""}</span>
+        <span class="cluster-guide-tag" style="color:${c};background:${c}18">${detail.tag}</span>
+      </div>
+      <div class="cluster-guide-desc">${detail.description}</div>`;
+
+    guide.appendChild(item);
+  }
+
+  // Palavras ativadoras extraídas do TF-IDF
+  const tokenList = document.getElementById("tokenList");
+  tokenList.innerHTML = "";
+
+  if (Array.isArray(top_tokens) && top_tokens.length > 0) {
+    top_tokens.forEach(item => {
+      const chip = document.createElement("span");
+      chip.className = "token-chip";
+
+      const token = document.createElement("span");
+      token.textContent = item.token;
+
+      const weight = document.createElement("span");
+      weight.className = "token-weight";
+      weight.textContent = `(${Number(item.weight).toFixed(3)})`;
+
+      chip.appendChild(token);
+      chip.appendChild(weight);
+      tokenList.appendChild(chip);
+    });
+  } else {
+    const chip = document.createElement("span");
+    chip.className = "token-chip";
+    chip.textContent = "Nenhuma palavra relevante encontrada no vocabulário do modelo";
+    tokenList.appendChild(chip);
+  }
+
+  // barras de confiança por cluster
   const grid = document.getElementById("confidenceGrid");
   grid.innerHTML = "";
   for (const [cls, pct] of Object.entries(confidence)) {

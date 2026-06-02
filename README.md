@@ -35,16 +35,17 @@ PROJETOA2/
 ### Com Docker (recomendado)
 
 ```bash
-docker compose up --build
+docker-compose up --build
 # Acesse: http://localhost:5000
 ```
 
 ### Sem Docker (desenvolvimento)
 
 ```bash
+source venv/bin/activate
 pip install -r requirements.txt
 python app.py
-# Acesse: http://localhost:5000
+# Acesse: http://localhost:5001
 ```
 
 ## API REST
